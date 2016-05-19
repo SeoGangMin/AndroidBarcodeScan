@@ -1,17 +1,18 @@
-package com.loopystory.lsscanner;
+package com.zbar.scanner;
 
-import android.media.AudioManager;
-
-import android.media.MediaPlayer;
-import android.media.SoundPool;
-
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.view.MenuItemCompat;
-import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.ArrayList;
@@ -21,7 +22,7 @@ import me.dm7.barcodescanner.zbar.BarcodeFormat;
 import me.dm7.barcodescanner.zbar.Result;
 import me.dm7.barcodescanner.zbar.ZBarScannerView;
 
-public class FullScannerActivity extends BaseScannerActivity implements MessageDialogFragment.MessageDialogListener,
+public class FullScannerFragment extends Fragment implements MessageDialogFragment.MessageDialogListener,
         ZBarScannerView.ResultHandler, FormatSelectorDialogFragment.FormatSelectorDialogListener,
         CameraSelectorDialogFragment.CameraSelectorDialogListener {
     private static final String FLASH_STATE = "FLASH_STATE";
@@ -35,8 +36,8 @@ public class FullScannerActivity extends BaseScannerActivity implements MessageD
     private int mCameraId = -1;
 
     @Override
-    public void onCreate(Bundle state) {
-        super.onCreate(state);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle state) {
+        mScannerView = new ZBarScannerView(getActivity());
         if(state != null) {
             mFlash = state.getBoolean(FLASH_STATE, false);
             mAutoFocus = state.getBoolean(AUTO_FOCUS_STATE, true);
@@ -48,35 +49,19 @@ public class FullScannerActivity extends BaseScannerActivity implements MessageD
             mSelectedIndices = null;
             mCameraId = -1;
         }
-
-        setContentView(R.layout.activity_full_scanner);
-        setupToolbar();
-        ViewGroup contentFrame = (ViewGroup) findViewById(R.id.content_frame);
-        mScannerView = new ZBarScannerView(this);
         setupFormats();
-        contentFrame.addView(mScannerView);
+        return mScannerView;
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        mScannerView.setResultHandler(this);
-        mScannerView.startCamera(mCameraId);
-        mScannerView.setFlash(mFlash);
-        mScannerView.setAutoFocus(mAutoFocus);
+    public void onCreate(Bundle state) {
+        super.onCreate(state);
+        setHasOptionsMenu(true);
     }
 
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putBoolean(FLASH_STATE, mFlash);
-        outState.putBoolean(AUTO_FOCUS_STATE, mAutoFocus);
-        outState.putIntegerArrayList(SELECTED_FORMATS, mSelectedIndices);
-        outState.putInt(CAMERA_ID, mCameraId);
-    }
+    public void onCreateOptionsMenu (Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
         MenuItem menuItem;
 
         if(mFlash) {
@@ -99,8 +84,6 @@ public class FullScannerActivity extends BaseScannerActivity implements MessageD
 
         menuItem = menu.add(Menu.NONE, R.id.menu_camera_selector, 0, R.string.select_camera);
         MenuItemCompat.setShowAsAction(menuItem, MenuItem.SHOW_AS_ACTION_NEVER);
-
-        return super.onCreateOptionsMenu(menu);
     }
 
     @Override
@@ -127,12 +110,12 @@ public class FullScannerActivity extends BaseScannerActivity implements MessageD
                 return true;
             case R.id.menu_formats:
                 DialogFragment fragment = FormatSelectorDialogFragment.newInstance(this, mSelectedIndices);
-                fragment.show(getSupportFragmentManager(), "format_selector");
+                fragment.show(getActivity().getSupportFragmentManager(), "format_selector");
                 return true;
             case R.id.menu_camera_selector:
                 mScannerView.stopCamera();
                 DialogFragment cFragment = CameraSelectorDialogFragment.newInstance(this, mCameraId);
-                cFragment.show(getSupportFragmentManager(), "camera_selector");
+                cFragment.show(getActivity().getSupportFragmentManager(), "camera_selector");
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -140,20 +123,36 @@ public class FullScannerActivity extends BaseScannerActivity implements MessageD
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        mScannerView.setResultHandler(this);
+        mScannerView.startCamera(mCameraId);
+        mScannerView.setFlash(mFlash);
+        mScannerView.setAutoFocus(mAutoFocus);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(FLASH_STATE, mFlash);
+        outState.putBoolean(AUTO_FOCUS_STATE, mAutoFocus);
+        outState.putIntegerArrayList(SELECTED_FORMATS, mSelectedIndices);
+        outState.putInt(CAMERA_ID, mCameraId);
+    }
+
+    @Override
     public void handleResult(Result rawResult) {
         try {
-            MediaPlayer mp = MediaPlayer.create(getApplicationContext(), R.raw.beep_type1);
-            mp.start();
-
-        } catch (Exception e) {
-            Log.d("DEBUG", e.getMessage());
-        }
+            Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            Ringtone r = RingtoneManager.getRingtone(getActivity().getApplicationContext(), notification);
+            r.play();
+        } catch (Exception e) {}
         showMessageDialog("Contents = " + rawResult.getContents() + ", Format = " + rawResult.getBarcodeFormat().getName());
     }
 
     public void showMessageDialog(String message) {
         DialogFragment fragment = MessageDialogFragment.newInstance("Scan Results", message, this);
-        fragment.show(getSupportFragmentManager(), "scan_results");
+        fragment.show(getActivity().getSupportFragmentManager(), "scan_results");
     }
 
     public void closeMessageDialog() {
@@ -165,7 +164,7 @@ public class FullScannerActivity extends BaseScannerActivity implements MessageD
     }
 
     public void closeDialog(String dialogName) {
-        FragmentManager fragmentManager = getSupportFragmentManager();
+        FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
         DialogFragment fragment = (DialogFragment) fragmentManager.findFragmentByTag(dialogName);
         if(fragment != null) {
             fragment.dismiss();
@@ -191,7 +190,6 @@ public class FullScannerActivity extends BaseScannerActivity implements MessageD
         mScannerView.setFlash(mFlash);
         mScannerView.setAutoFocus(mAutoFocus);
     }
-
 
     public void setupFormats() {
         List<BarcodeFormat> formats = new ArrayList<BarcodeFormat>();

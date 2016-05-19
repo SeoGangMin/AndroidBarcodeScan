@@ -1,4 +1,4 @@
-package com.loopystory.lsscanner;
+package com.zbar.scanner;
 
 import android.Manifest;
 import android.content.Intent;

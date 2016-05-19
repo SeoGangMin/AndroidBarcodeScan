@@ -1,4 +1,4 @@
-package com.loopystory.lsscanner;
+package com.zbar.scanner;
 
 import android.app.AlertDialog;
 import android.app.Dialog;

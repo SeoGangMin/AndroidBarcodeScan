@@ -1,4 +1,4 @@
-package com.loopystory.lsscanner;
+package com.zbar.scanner;
 
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
