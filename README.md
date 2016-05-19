@@ -1,0 +1,2 @@
+# AndroidBarcodeScan
+AndroidStudio + Zbar
